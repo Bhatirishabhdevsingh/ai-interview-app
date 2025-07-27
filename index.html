@@ -450,7 +450,7 @@
                     }`;
 
                     const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
-                    const apiKey = ""; // API Key is handled by the environment
+                    const apiKey = "AIzaSyCasx9hIzUKOqu-sgD_J8HGoakLGDcc3H8"; // API Key is handled by the environment
                     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
                     const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!response.ok) throw new Error(`API Error: ${response.status}`);
