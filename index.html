@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Interview Practice Tool</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- face-api.js for Eye Tracking -->
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <style>
+        /* Custom styles for better look and feel */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .appearance-none {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        .bg-dots {
+            background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.1) 1px, transparent 0);
+            background-size: 20px 20px;
+        }
+        .feedback-card {
+            border-left: 4px solid #2dd4bf; /* cyan-400 */
+        }
+        #video-container {
+            position: relative;
+        }
+        #eye-tracking-alert {
+            position: absolute;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-900 bg-dots">
+
+    <!-- Setup Screen -->
+    <div id="setup-screen" class="min-h-screen flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-lg p-8 bg-gray-800 rounded-2xl shadow-2xl space-y-6">
+            <h1 class="text-3xl font-bold text-center text-cyan-400">AI Interview</h1>
+            <div>
+                <label for="name-input" class="block text-lg font-medium text-gray-300 mb-2">Your Name :</label>
+                <input type="text" id="name-input" class="w-full p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:ring-2 focus:ring-cyan-500 focus:outline-none" placeholder="Enter Your Name">
+            </div>
+            <div>
+                <label class="block text-lg font-medium text-gray-300 mb-2">Choose Language:</label>
+                <div class="flex space-x-4">
+                    <button id="lang-en-btn" class="w-full p-3 rounded-lg font-semibold transition-colors bg-cyan-500 text-white">English</button>
+                    <button id="lang-hi-btn" class="w-full p-3 rounded-lg font-semibold transition-colors bg-gray-700 hover:bg-gray-600 text-white">Hindi</button>
+                </div>
+            </div>
+            <div>
+                <label for="domain-select" class="block text-lg font-medium text-gray-300 mb-2">Select Domain:</label>
+                <select id="domain-select" class="w-full p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:ring-2 focus:ring-cyan-500 focus:outline-none appearance-none">
+                    <optgroup label="Technical Domains">
+                        <option>Programming Languages (Java, Python, C++)</option>
+                        <option>Data Structures and Algorithms (DSA)</option>
+                        <option>Databases (SQL, NoSQL)</option>
+                        <option>Operating Systems</option>
+                        <option>Computer Networks</option>
+                        <option>System Design</option>
+                    </optgroup>
+                    <optgroup label="Industry-Specific Knowledge">
+                        <option>Domain Expertise (Finance, Healthcare, etc.)</option>
+                        <option>Company Research & Values</option>
+                        <option>Role-Specific Skills</option>
+                    </optgroup>
+                    <optgroup label="Soft Skills & Behavioral">
+                        <option>Communication Skills</option>
+                        <option>Problem-Solving Approach</option>
+                        <option>Teamwork and Collaboration</option>
+                        <option>Adaptability</option>
+                    </optgroup>
+                     <optgroup label="Common Interview Questions">
+                        <option>Behavioral Questions (STAR Method)</option>
+                        <option>General Technical Questions</option>
+                    </optgroup>
+                </select>
+            </div>
+            <button id="start-practice-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 shadow-lg text-xl">Start Practice</button>
+        </div>
+        <div id="creator-footer-setup"></div>
+    </div>
+
+    <!-- Interview Screen -->
+    <div id="interview-screen" class="min-h-screen flex-col items-center justify-center p-4 hidden">
+        <div class="w-full max-w-4xl mx-auto bg-gray-800 rounded-2xl shadow-2xl flex flex-col">
+            <div class="p-4 bg-gray-900 rounded-t-2xl text-center">
+                <h1 class="text-2xl font-bold text-cyan-400">AI Interview Practice</h1>
+                <p id="question-counter" class="text-gray-400">Question 1 of 10</p>
+            </div>
+            <div class="p-6 flex flex-col items-center justify-center">
+                <div id="video-container" class="w-full max-w-2xl aspect-video bg-black rounded-lg overflow-hidden shadow-lg mb-4">
+                    <video id="video-feed" autoplay muted playsinline class="w-full h-full object-cover"></video>
+                    <div id="eye-tracking-alert" class="bg-red-500 text-white text-sm font-bold px-4 py-2 rounded-full shadow-lg opacity-0">
+                        Please look at the camera
+                    </div>
+                </div>
+                <div id="question-box" class="w-full max-w-2xl text-center p-4 bg-gray-900 rounded-lg mb-4 min-h-[100px] flex items-center justify-center">
+                    <div id="question-text" class="text-lg text-gray-300"></div>
+                </div>
+                <div id="voice-visualizer" class="flex items-center justify-center space-x-2 h-8"></div>
+                <div class="w-full max-w-2xl text-center p-4 bg-gray-700 rounded-lg mb-4 min-h-[80px] flex items-center justify-center">
+                    <p id="transcript-text" class="text-lg text-gray-300 italic">Your answer will appear here...</p>
+                </div>
+                <div class="flex space-x-4 mt-4">
+                    <div id="answer-controls" class="flex space-x-4">
+                        <button id="start-recording-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-lg transition-all duration-300 shadow-lg text-lg">Answer</button>
+                        <button id="skip-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-8 rounded-lg transition-all duration-300 shadow-lg text-lg">Skip</button>
+                    </div>
+                    <button id="stop-recording-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-lg transition-all duration-300 shadow-lg text-lg hidden">Done</button>
+                </div>
+            </div>
+        </div>
+        <div id="creator-footer-interview"></div>
+    </div>
+
+    <!-- Summary Screen -->
+    <div id="summary-screen" class="min-h-screen flex-col items-center justify-center p-4 hidden">
+        <div class="w-full max-w-3xl p-8 bg-gray-800 rounded-2xl shadow-2xl space-y-6">
+            <h1 class="text-3xl font-bold text-center text-cyan-400">Interview Analysis</h1>
+            <div id="summary-content" class="hidden">
+                <div class="text-center bg-gray-900 p-6 rounded-lg mb-6">
+                    <h2 class="text-xl font-semibold text-gray-300 mb-2">Your Final Score</h2>
+                    <p id="final-score" class="text-5xl font-bold text-cyan-400">0.0 / 10</p>
+                </div>
+                <div class="mb-6">
+                    <h2 class="text-2xl font-semibold text-gray-300 mb-3">Overall Feedback</h2>
+                    <div id="overall-feedback" class="bg-gray-700 p-4 rounded-lg text-gray-300 whitespace-pre-wrap"></div>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-semibold text-gray-300 mb-4">Detailed Analysis</h2>
+                    <div id="detailed-feedback-container" class="space-y-6"></div>
+                </div>
+                <button id="restart-btn" class="w-full mt-8 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 shadow-lg text-xl">Practice Again</button>
+            </div>
+             <div id="summary-loader" class="flex justify-center items-center h-full p-8">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400"></div>
+            </div>
+        </div>
+        <div id="creator-footer-summary"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Pre-loaded Question Bank ---
+            const questionBank = {
+                'Programming Languages (Java, Python, C++)': [
+                    "What is the difference between a class and an object in object-oriented programming?",
+                    "Explain the concept of polymorphism with a real-world example.",
+                    "What are constructors and why are they used?",
+                    "Describe the difference between method overloading and method overriding.",
+                    "What is inheritance and how does it promote code reusability?",
+                    "Explain the 'final' keyword in Java.",
+                    "What are lambda expressions in Python and what are their benefits?",
+                    "Describe the difference between a list and a tuple in Python.",
+                    "What is a pointer in C++? Explain its uses.",
+                    "Explain the concept of garbage collection."
+                ],
+                'Data Structures and Algorithms (DSA)': [
+                    "What is the difference between an array and a linked list?",
+                    "Explain how a hash table works and discuss its time complexity.",
+                    "Describe the difference between a stack and a queue.",
+                    "What is a binary search tree? What are its advantages?",
+                    "Explain the concept of recursion with a simple example.",
+                    "What is the time complexity of the bubble sort algorithm?",
+                    "Describe Dijkstra's algorithm for finding the shortest path.",
+                    "What is dynamic programming and when would you use it?",
+                    "Explain the difference between breadth-first search (BFS) and depth-first search (DFS).",
+                    "How would you reverse a linked list?"
+                ],
+                'Databases (SQL, NoSQL)': [
+                    "What is the difference between SQL and NoSQL databases?",
+                    "Explain the different types of SQL joins (INNER, LEFT, RIGHT, FULL).",
+                    "What is an index in a database and why is it useful?",
+                    "Describe the concept of database normalization.",
+                    "What is a primary key and a foreign key?",
+                    "Explain the ACID properties in the context of database transactions.",
+                    "What is a stored procedure?",
+                    "Describe a scenario where a NoSQL database would be a better choice than a SQL database.",
+                    "How would you write a query to find the second highest salary from an employee table?",
+                    "What is database sharding?"
+                ],
+                'Operating Systems': [
+                    "What is the difference between a process and a thread?",
+                    "Explain the concept of virtual memory.",
+                    "What is a deadlock and how can it be prevented?",
+                    "Describe the different states of a process.",
+                    "What is the purpose of the operating system's kernel?",
+                    "Explain the concept of context switching.",
+                    "What is a semaphore and how is it used for synchronization?",
+                    "Describe the difference between user-level threads and kernel-level threads.",
+                    "What is memory fragmentation?",
+                    "Explain the concept of a file system."
+                ],
+                'Computer Networks': [
+                    "What are the different layers of the OSI model?",
+                    "Explain the difference between TCP and UDP.",
+                    "What is DNS and how does it work?",
+                    "Describe the three-way handshake in TCP.",
+                    "What is an IP address? Differentiate between IPv4 and IPv6.",
+                    "Explain the role of a router in a network.",
+                    "What is HTTP and what is the difference between HTTP and HTTPS?",
+                    "Describe the concept of a firewall.",
+                    "What is a MAC address?",
+                    "Explain what happens when you type a URL into your browser and press Enter."
+                ],
+                'System Design': [
+                    "How would you design a URL shortening service like TinyURL?",
+                    "Describe the key components of a scalable web application architecture.",
+                    "What is load balancing and what are different load balancing strategies?",
+                    "Explain the concept of caching and its different types.",
+                    "How would you design a news feed system like Facebook or Twitter?",
+                    "What is a Content Delivery Network (CDN) and why is it used?",
+                    "Discuss the trade-offs between consistency and availability in distributed systems.",
+                    "How would you design a system for real-time chat like WhatsApp?",
+                    "What is database replication and why is it important?",
+                    "Explain the concept of microservices architecture."
+                ],
+                'Behavioral Questions (STAR Method)': [
+                    "Tell me about a time you had to work with a difficult team member.",
+                    "Describe a situation where you had to learn a new technology quickly.",
+                    "Give an example of a goal you set and how you achieved it.",
+                    "Tell me about a time you failed. What did you learn from it?",
+                    "Describe a complex project you worked on and your role in it.",
+                    "How do you handle tight deadlines and pressure?",
+                    "Tell me about a time you had a conflict with your manager and how you resolved it.",
+                    "Describe a situation where you went above and beyond your job responsibilities.",
+                    "How do you stay updated with the latest industry trends?",
+                    "Give an example of a time you had to make an important decision with limited information."
+                ]
+            };
+            questionBank['Domain Expertise (Finance, Healthcare, etc.)'] = questionBank['Behavioral Questions (STAR Method)'];
+            questionBank['Company Research & Values'] = questionBank['Behavioral Questions (STAR Method)'];
+            questionBank['Role-Specific Skills'] = questionBank['Behavioral Questions (STAR Method)'];
+            questionBank['Communication Skills'] = questionBank['Behavioral Questions (STAR Method)'];
+            questionBank['Problem-Solving Approach'] = questionBank['Behavioral Questions (STAR Method)'];
+            questionBank['Teamwork and Collaboration'] = questionBank['Behavioral Questions (STAR Method)'];
+            questionBank['Adaptability'] = questionBank['Behavioral Questions (STAR Method)'];
+            questionBank['General Technical Questions'] = questionBank['Data Structures and Algorithms (DSA)'];
+
+            // --- DOM Elements ---
+            const screens = {
+                setup: document.getElementById('setup-screen'),
+                interview: document.getElementById('interview-screen'),
+                summary: document.getElementById('summary-screen'),
+            };
+            const nameInput = document.getElementById('name-input');
+            const langEnBtn = document.getElementById('lang-en-btn');
+            const langHiBtn = document.getElementById('lang-hi-btn');
+            const domainSelect = document.getElementById('domain-select');
+            const startPracticeBtn = document.getElementById('start-practice-btn');
+            const videoFeed = document.getElementById('video-feed');
+            const eyeTrackingAlert = document.getElementById('eye-tracking-alert');
+            const questionCounter = document.getElementById('question-counter');
+            const questionBox = document.getElementById('question-box');
+            const questionText = document.getElementById('question-text');
+            const voiceVisualizer = document.getElementById('voice-visualizer');
+            const transcriptText = document.getElementById('transcript-text');
+            const answerControls = document.getElementById('answer-controls');
+            const startRecordingBtn = document.getElementById('start-recording-btn');
+            const skipBtn = document.getElementById('skip-btn');
+            const stopRecordingBtn = document.getElementById('stop-recording-btn');
+            const summaryLoader = document.getElementById('summary-loader');
+            const summaryContent = document.getElementById('summary-content');
+            const finalScoreEl = document.getElementById('final-score');
+            const overallFeedbackEl = document.getElementById('overall-feedback');
+            const detailedFeedbackContainer = document.getElementById('detailed-feedback-container');
+            const restartBtn = document.getElementById('restart-btn');
+
+            // --- State Variables ---
+            let userName = '';
+            let language = 'en-US';
+            let domain = 'Programming Languages (Java, Python, C++)';
+            let question = "Welcome! Please complete the setup to begin.";
+            let questionCount = 0;
+            let interviewData = [];
+            let transcript = '';
+            let isRecording = false;
+            let stream = null;
+            let recognition = null;
+            let audioContext, analyser, dataArray, animationFrameId;
+            let shuffledQuestions = [];
+            let gazeDetectionInterval = null;
+            let lookAwayCounter = 0;
+            
+            const TOTAL_QUESTIONS = 10;
+
+            // --- Creator Footer ---
+            const creatorFooterHTML = `
+                <footer class="text-center text-gray-500 mt-6 text-sm p-4 w-full">
+                    <p class="mb-2">Created by <span class="font-semibold text-cyan-400">Rishabhadev Singh</span></p>
+                    <div class="flex justify-center items-center space-x-4">
+                        <a href="https://www.linkedin.com/in/rishabhadevsingh" target="_blank" rel="noopener noreferrer" class="hover:text-cyan-300 transition-colors">LinkedIn</a>
+                        <a href="https://github.com/Rishabhadevsingh" target="_blank" rel="noopener noreferrer" class="hover:text-cyan-300 transition-colors">GitHub</a>
+                        <a href="mailto:rishabsingh7728@gmail.com" class="hover:text-cyan-300 transition-colors">Email</a>
+                    </div>
+                </footer>
+            `;
+            document.getElementById('creator-footer-setup').innerHTML = creatorFooterHTML;
+            document.getElementById('creator-footer-interview').innerHTML = creatorFooterHTML;
+            document.getElementById('creator-footer-summary').innerHTML = creatorFooterHTML;
+
+            // --- Functions ---
+            const showScreen = (screenName) => {
+                Object.values(screens).forEach(screen => screen.classList.add('hidden'));
+                screens[screenName].classList.remove('hidden');
+                screens[screenName].classList.add('flex');
+            };
+
+            const updateQuestionText = (text) => {
+                question = text;
+                questionText.textContent = text;
+            };
+            
+            const setupSpeechRecognition = () => {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (SpeechRecognition) {
+                    recognition = new SpeechRecognition();
+                    recognition.continuous = true;
+                    recognition.interimResults = true;
+                    recognition.lang = language;
+
+                    recognition.onresult = (event) => {
+                        let interimTranscript = '';
+                        for (let i = event.resultIndex; i < event.results.length; ++i) {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                        transcript = interimTranscript;
+                        transcriptText.textContent = transcript || "Your answer will appear here...";
+                    };
+
+                    recognition.onerror = (event) => {
+                        console.error("Speech Recognition Error", event.error);
+                    };
+
+                    recognition.onend = () => {
+                        if (isRecording) {
+                            recognition.start();
+                        }
+                    };
+                }
+            };
+            
+            const initializeMedia = async () => {
+                if (stream) return; // If stream already exists, do nothing
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    videoFeed.srcObject = stream;
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const source = audioContext.createMediaStreamSource(stream);
+                    analyser = audioContext.createAnalyser();
+                    analyser.fftSize = 512;
+                    source.connect(analyser);
+                    dataArray = new Uint8Array(analyser.frequencyBinCount);
+                } catch (err) {
+                    console.error("Error accessing media devices.", err);
+                    alert("Could not access camera/microphone. Please check permissions and refresh the page.");
+                }
+            };
+
+            const visualizeVoice = () => {
+                if (!isRecording) return;
+                analyser.getByteFrequencyData(dataArray);
+                const average = dataArray.reduce((sum, val) => sum + val, 0) / dataArray.length;
+                const activity = average / 128;
+                
+                voiceVisualizer.innerHTML = [...Array(5)].map((_, i) => `
+                    <div class="w-2 h-2 bg-cyan-400 rounded-full transition-all duration-100" 
+                         style="transform: scale(${1 + (activity * 4 * ((i + 1) / 5))}); opacity: ${Math.max(0.2, activity)}">
+                    </div>
+                `).join('');
+                
+                animationFrameId = requestAnimationFrame(visualizeVoice);
+            };
+
+            const speakQuestion = (text) => {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = language;
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1.1;
+                    const voices = window.speechSynthesis.getVoices();
+                    let preferredVoice = voices.find(v => v.lang === language && v.name.includes('Google')) || voices.find(v => v.lang === language);
+                    if (preferredVoice) utterance.voice = preferredVoice;
+                    window.speechSynthesis.speak(utterance);
+                }
+            };
+
+            const fetchNextQuestion = () => {
+                if (shuffledQuestions.length > 0) {
+                    const nextQ = shuffledQuestions.pop();
+                    questionCount++;
+                    questionCounter.textContent = `Question ${questionCount} of ${TOTAL_QUESTIONS}`;
+                    updateQuestionText(nextQ);
+                    speakQuestion(nextQ);
+                } else {
+                    getFinalFeedbackAndScore();
+                }
+            };
+            
+            const getFinalFeedbackAndScore = async () => {
+                showScreen('summary');
+                summaryLoader.classList.remove('hidden');
+                summaryContent.classList.add('hidden');
+                try {
+                    const formattedInterview = interviewData.map((item, index) => `Question ${index + 1}: ${item.question}\nAnswer ${index + 1}: ${item.answer}`).join('\n\n');
+                    const langName = language === 'en-US' ? 'English' : 'Hindi';
+                    const prompt = `You are an expert interviewer. Analyze the following interview transcript and provide a detailed, structured analysis in ${langName}.
+
+                    Transcript:
+                    ${formattedInterview}
+
+                    Instructions for your analysis:
+                    1.  **Scoring Criteria:** For each answer, evaluate it based on:
+                        * **Clarity & Conciseness:** Was the answer clear and to the point?
+                        * **Relevance:** Did it directly answer the question?
+                        * **Completeness & Accuracy:** Was the information correct and comprehensive?
+                        * **Structure (STAR method for behavioral):** Was the answer well-structured?
+                    2.  **JSON Output:** Provide your entire response as a single, valid JSON object. Do not include any text outside of the JSON structure.
+
+                    The JSON structure must be as follows:
+                    {
+                      "overallScore": [A number out of 10, calculated as the average of individual scores],
+                      "overallFeedback": "[Your overall summary of the performance, highlighting strengths and key areas for improvement.]",
+                      "detailedAnalysis": [
+                        {
+                          "question": "[The first question]",
+                          "answer": "[The user's first answer]",
+                          "feedback": "[Your specific feedback for this answer based on the criteria.]",
+                          "score": [A number out of 10 for this specific answer]
+                        },
+                        {
+                          "question": "[The second question]",
+                          "answer": "[The user's second answer]",
+                          "feedback": "[Your specific feedback for this answer based on the criteria.]",
+                          "score": [A number out of 10 for this specific answer]
+                        }
+                      ]
+                    }`;
+
+                    const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+                    const apiKey = ""; // API Key is handled by the environment
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                    const result = await response.json();
+                    
+                    if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        // Clean the response to ensure it's valid JSON
+                        let jsonText = result.candidates[0].content.parts[0].text;
+                        const startIndex = jsonText.indexOf('{');
+                        const endIndex = jsonText.lastIndexOf('}');
+                        if (startIndex !== -1 && endIndex !== -1) {
+                            jsonText = jsonText.substring(startIndex, endIndex + 1);
+                        }
+                        
+                        const analysis = JSON.parse(jsonText);
+                        
+                        finalScoreEl.textContent = `${analysis.overallScore.toFixed(1)} / 10`;
+                        overallFeedbackEl.textContent = analysis.overallFeedback;
+
+                        detailedFeedbackContainer.innerHTML = ''; // Clear previous feedback
+                        analysis.detailedAnalysis.forEach((item, index) => {
+                            const card = document.createElement('div');
+                            card.className = 'bg-gray-700 p-4 rounded-lg feedback-card';
+                            card.innerHTML = `
+                                <div class="flex justify-between items-center mb-2">
+                                    <h3 class="text-lg font-semibold text-cyan-300">Question ${index + 1}</h3>
+                                    <span class="font-bold text-lg text-white">${item.score.toFixed(1)}/10</span>
+                                </div>
+                                <p class="text-gray-300 mb-3">${item.question}</p>
+                                <h4 class="font-semibold text-gray-400">Your Answer:</h4>
+                                <p class="text-gray-300 italic mb-3">"${item.answer}"</p>
+                                <h4 class="font-semibold text-gray-400">Feedback:</h4>
+                                <p class="text-gray-300">${item.feedback}</p>
+                            `;
+                            detailedFeedbackContainer.appendChild(card);
+                        });
+
+                    } else {
+                        throw new Error(`Could not get feedback: ${result.promptFeedback?.blockReason || "No content"}`);
+                    }
+                } catch (error) {
+                    console.error("Error fetching final feedback:", error);
+                    overallFeedbackEl.textContent = `An error occurred while analyzing: ${error.message}. The AI's response might not be in the correct format.`;
+                } finally {
+                    summaryLoader.classList.add('hidden');
+                    summaryContent.classList.remove('hidden');
+                }
+            };
+            
+            // --- Eye Tracking Functions ---
+            const loadFaceApiModels = async () => {
+                try {
+                    await Promise.all([
+                        faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights'),
+                        faceapi.nets.faceLandmark68TinyNet.loadFromUri('https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights')
+                    ]);
+                    console.log("FaceAPI models loaded successfully.");
+                } catch (error) {
+                    console.error("Error loading FaceAPI models:", error);
+                }
+            };
+
+            const startGazeDetection = () => {
+                lookAwayCounter = 0;
+                gazeDetectionInterval = setInterval(async () => {
+                    if (!videoFeed || videoFeed.paused || videoFeed.ended || typeof faceapi === 'undefined') {
+                        return;
+                    }
+                    const detections = await faceapi.detectSingleFace(videoFeed, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks(true);
+                    if (detections) {
+                        const landmarks = detections.landmarks;
+                        const nose = landmarks.getNose();
+                        const jaw = landmarks.getJawOutline();
+                        const faceCenterX = (jaw[0].x + jaw[16].x) / 2;
+                        const noseTipX = nose[3].x;
+                        const deviation = Math.abs(noseTipX - faceCenterX) / (jaw[16].x - jaw[0].x);
+
+                        if (deviation > 0.08) { 
+                            lookAwayCounter++;
+                        } else {
+                            lookAwayCounter = 0;
+                        }
+
+                        if (lookAwayCounter > 3) { 
+                            eyeTrackingAlert.classList.remove('opacity-0');
+                        } else {
+                            eyeTrackingAlert.classList.add('opacity-0');
+                        }
+                    }
+                }, 500);
+            };
+
+            const stopGazeDetection = () => {
+                if (gazeDetectionInterval) {
+                    clearInterval(gazeDetectionInterval);
+                    gazeDetectionInterval = null;
+                    eyeTrackingAlert.classList.add('opacity-0');
+                }
+            };
+
+            // --- Event Listeners ---
+            langEnBtn.addEventListener('click', () => {
+                language = 'en-US';
+                langEnBtn.classList.replace('bg-gray-700', 'bg-cyan-500');
+                langHiBtn.classList.replace('bg-cyan-500', 'bg-gray-700');
+            });
+            
+            langHiBtn.addEventListener('click', () => {
+                language = 'hi-IN';
+                langHiBtn.classList.replace('bg-gray-700', 'bg-cyan-500');
+                langEnBtn.classList.replace('bg-cyan-500', 'bg-gray-700');
+            });
+
+            startPracticeBtn.addEventListener('click', async () => {
+                userName = nameInput.value;
+                domain = domainSelect.value;
+                if (!userName.trim()) {
+                    alert("Please enter your name.");
+                    return;
+                }
+                if (!stream) {
+                    alert("Please grant camera and microphone permissions first.");
+                    return;
+                }
+
+                const questionsForDomain = questionBank[domain] || questionBank['Behavioral Questions (STAR Method)'];
+                shuffledQuestions = [...questionsForDomain].sort(() => 0.5 - Math.random()).slice(0, TOTAL_QUESTIONS);
+
+                showScreen('interview');
+                setupSpeechRecognition();
+                
+                questionCount = 1;
+                questionCounter.textContent = `Question ${questionCount} of ${TOTAL_QUESTIONS}`;
+                const firstQuestionText = language === 'en-US' 
+                    ? `Hello ${userName}, let's begin. Tell me about yourself.` 
+                    : `Namaste ${userName}, chaliye shuru karte hain. Mujhe apne baare mein batayein.`;
+                updateQuestionText(firstQuestionText);
+                speakQuestion(firstQuestionText);
+            });
+
+            startRecordingBtn.addEventListener('click', () => {
+                if (stream && recognition) {
+                    isRecording = true;
+                    transcript = '';
+                    transcriptText.textContent = "Listening...";
+                    recognition.start();
+                    visualizeVoice();
+                    startGazeDetection();
+                    answerControls.classList.add('hidden');
+                    stopRecordingBtn.classList.remove('hidden');
+                } else {
+                    alert("Could not start recording. Please ensure microphone permissions are granted.");
+                }
+            });
+
+            skipBtn.addEventListener('click', () => {
+                interviewData.push({ question, answer: "(Question Skipped)" });
+                if (questionCount < TOTAL_QUESTIONS) {
+                    fetchNextQuestion();
+                } else {
+                    getFinalFeedbackAndScore();
+                }
+            });
+
+            stopRecordingBtn.addEventListener('click', () => {
+                if (isRecording) {
+                    isRecording = false;
+                    recognition.stop();
+                    stopGazeDetection();
+                    cancelAnimationFrame(animationFrameId);
+                    voiceVisualizer.innerHTML = '';
+                    answerControls.classList.remove('hidden');
+                    stopRecordingBtn.classList.add('hidden');
+                    
+                    const finalAnswer = transcript.trim() || "(No answer was recorded)";
+                    interviewData.push({ question, answer: finalAnswer });
+                    
+                    if (questionCount < TOTAL_QUESTIONS) {
+                        fetchNextQuestion();
+                    } else {
+                        getFinalFeedbackAndScore();
+                    }
+                    transcript = '';
+                    transcriptText.textContent = "Your answer will appear here...";
+                }
+            });
+            
+            restartBtn.addEventListener('click', () => {
+                interviewData = [];
+                questionCount = 0;
+                transcript = '';
+                overallFeedbackEl.textContent = '';
+                detailedFeedbackContainer.innerHTML = '';
+                finalScoreEl.textContent = '0.0 / 10';
+                // Do not stop the stream, just reset the UI
+                stopGazeDetection();
+                showScreen('setup');
+            });
+
+            // Initial setup on page load
+            const initializeApp = async () => {
+                await initializeMedia();
+                if (typeof faceapi !== 'undefined') {
+                    await loadFaceApiModels();
+                }
+                showScreen('setup');
+            };
+            
+            initializeApp();
+        });
+    </script>
+</body>
+</ht
